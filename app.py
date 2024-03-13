@@ -2,9 +2,11 @@ from sanic import response
 from sanic import Sanic
 import tweepy
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from sanic.response import text
 from urllib.parse import urlparse, urlencode
+from pymongo import MongoClient
+
 
 
 app = Sanic(__name__)
@@ -12,6 +14,14 @@ app = Sanic(__name__)
 CONSUMER_KEY = os.environ.get("CONSUMER_KEY")
 CONSUMER_SECRET = os.environ.get("CONSUMER_SECRET")
 CALLBACK_URL = "http://192.168.0.123:8000/login"
+
+client = MongoClient('mongodb://localhost:27017')  
+# client = MongoClient('mongodb://cdpDBReader:cdp_db_reader_t44KgbvepBNIFFbW@35.198.222.97:27017,34.124.133.164:27017,34.124.205.24:27017/') 
+database = client['cdp_database']
+web2_actions_v2 = database['web2_actions_v2']
+users_v2 = database['users_v2']
+actions_v2 = database['actions_v2']
+campaigns = database['campaigns']
 
 @app.route("/generate-url", methods={'POST'})
 async def generate_url(request):
@@ -46,197 +56,58 @@ async def overview_chart(request):
     start_timestamp = request.args.get('start')
     end_timestamp = request.args.get('end')
 
-    # TODO: Use start_date and end_date parameters as needed in your logic
+    campaign_list = campaigns.find({},{"_id": 0, "setup_campaign":1})
+    month1 = get_one_months_ago_timestamp()
+    history = {}
+    actions = {
+        'track_wallet_address_count': 0, 
+        'page_view_count': 0, 
+        'user_count': 0, 
+        'transaction_count': 0
+    }
+    transactions = 0
+
+    for campaign in campaign_list:
+        setup_campaign = campaign.get("setup_campaign", {})
+        campaign_name = setup_campaign.get("name")
+        # print(campaign_name)
+
+        list_user = get_user_in_campaign(campaign_name, month1)
+        # print(len(list_user))
+
+        history_actions, count_actions = count_user_action_by_day(list_user, month1)
+        # print(count_actions)
+        history_transactions, count_transactions = count_user_transaction(list_user, month1)
+
+        for timestamp in history_actions.keys():
+            if timestamp not in history:
+                history[timestamp] = {
+                    'track_wallet_address_count': 0,
+                    'page_view_count': 0,
+                    'user_count': 0,
+                    'transaction_count': 0
+                }
+            history_actions[timestamp].update(history_transactions[timestamp])
+
+            history[timestamp]['track_wallet_address_count'] += history_actions[timestamp]['track_wallet_address_count']
+            history[timestamp]['page_view_count'] += history_actions[timestamp]['page_view_count']
+            history[timestamp]['user_count'] += history_actions[timestamp]['user_count']
+            history[timestamp]['transaction_count'] += history_transactions[timestamp]['transaction_count']
+
+        actions['track_wallet_address_count'] += count_actions['track_wallet_address_count']
+        actions['page_view_count'] += count_actions['page_view_count']
+        actions['user_count'] += count_actions['user_count']
+
+        transactions += count_transactions
+
     info = {
         "cost": "1000$",
-        "visits": 15231,
-        "connectWallets": 1000,
-        "transactions": 1648,
-        "history": {
-            1707696000: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1707782400: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1707868800: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1707955200: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708041600: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708128000: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708214400: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708300800: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708387200: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708473600: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708560000: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708646400: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708732800: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708819200: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708905600: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1708992000: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709078400: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709164800: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709251200: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709337600: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709424000: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709510400: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709596800: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709683200: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709769600: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709856000: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1709942400: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1710028800: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1710115200: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            },
-            1710201600: {
-                "click":214,
-                "visit":157,
-                "connectWallet": 24,
-                "transaction": 58
-            }
-        },
-        "start":start_timestamp,
-        "end": end_timestamp 
+        "visits": actions['page_view_count'],
+        "connectWallets": actions['track_wallet_address_count'],
+        "transactions": transactions,
+        "history": history
     }
+    
     return response.json(info)
 
 @app.route("/overview-table", methods={'GET'})
@@ -642,6 +513,113 @@ async def get_campaign_actions(request, id: str):
 @app.route('/')
 async def index(request):
     return text("Hello, this is your Sanic server!")
+
+def get_one_months_ago_timestamp():
+    one_month_ago = datetime.now() - timedelta(days=29)
+    format = datetime(one_month_ago.year, one_month_ago.month, one_month_ago.day, 0, 0, 0)
+    return int(format.timestamp() + 7*3600)
+
+def get_user_in_campaign(name, start):
+    users = web2_actions_v2.find()
+    matching_users = []
+    for user in users:
+        sessions = user.get("actions", {})
+        for session_timestamp, session in sessions.items():
+            if int(session_timestamp) < start:
+                continue
+
+            for action_timestamp, action in session.items():
+                campaign_info = action.get("campaign_info", {})
+                if campaign_info.get("name") == name:
+                    matching_users.append(user)
+                    break
+            break
+    return matching_users
+
+def count_user_action_by_day(users, start):
+    # Tính toán mốc timestamp của ngày hiện tại
+    current_date = datetime.now()
+    current_date_timestamp = int(current_date.timestamp())
+
+    # Tạo danh sách các ngày từ start đến ngày hiện tại
+    days_list = range(start, current_date_timestamp, 86400)
+
+    # Khởi tạo dict với tất cả các ngày và giá trị mặc định là 0
+    action_count_by_day = {day: {
+        "track_wallet_address_count": 0,
+        "page_view_count": 0,
+        "user_count": 0 
+    } for day in days_list}
+
+    action_count_user = {
+        "track_wallet_address_count": 0,
+        "page_view_count": 0,
+        "user_count": len(users)
+    }
+
+    unique_users = set()
+
+    for user in users:
+        user_id = user.get("user")
+        sessions = user.get("actions", {})
+        for session_timestamp, session in sessions.items():
+            session_date = int(session_timestamp) // 86400 * 86400  
+
+            if session_date < start:
+                continue
+
+            unique_actions_in_session = set()
+
+            for action_timestamp, action_info in session.items():
+                action = action_info.get("action")
+
+                if action not in unique_actions_in_session:
+                    unique_actions_in_session.add(action)
+
+                    if action == "track_wallet_address":
+                        action_count_by_day[session_date]["track_wallet_address_count"] += 1
+                        action_count_user["track_wallet_address_count"] += 1
+                    elif action == "page_view":
+                        action_count_by_day[session_date]["page_view_count"] += 1
+                        action_count_user["page_view_count"] += 1
+
+            if user_id not in unique_users:
+                action_count_by_day[session_date]["user_count"] += 1
+                unique_users.add(user_id)
+
+    return action_count_by_day, action_count_user
+
+def count_user_transaction(users, start):
+    user_ids = [user["_id"] for user in users]
+    filtered_users = list(users_v2.find({"_id": {"$in": user_ids}}, {"_id": 0, "address": 1}))
+
+    user_addresses = [user["address"] for user in filtered_users if "address" in user]
+
+    user_have_transaction = list(actions_v2.find({"address": {"$in": user_addresses}}, {"actions": 1}))
+
+    # transaction_counts = {}
+    current_date = datetime.now()
+    current_date_timestamp = int(current_date.timestamp())
+    days_list = range(start, current_date_timestamp, 86400)
+
+    transaction_count_by_day = {day: {"transaction_count": 0} for day in days_list}
+    transaction_count = 0
+    for user in user_have_transaction:
+        actions = user.get("actions", {})
+        # user_id = user.get("_id", "")
+        # transaction_counts.setdefault(user_id, 0)
+
+        for session_timestamp, session in actions.items():
+            session_date = int(session_timestamp) // 86400 * 86400
+
+            if int(session_timestamp) < start:
+                continue
+
+            # transaction_counts[user_id] += len(session)
+            transaction_count_by_day[session_date]["transaction_count"] += len(session)
+            transaction_count += len(session)
+
+    return transaction_count_by_day, transaction_count
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
